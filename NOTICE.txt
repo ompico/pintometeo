@@ -1,0 +1,7 @@
+PintoMeteo
+Copyright 2026 [Tu Nombre o Nombre de Usuario]
+
+This product includes meteorological data geographic information provided 
+by Open-Meteo (https://open-meteo.com/).
+The data is licensed under the Creative Commons Attribution-NonCommercial 
+4.0 International License (CC BY-NC 4.0).
