@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; color: #333; padding: 12px; }
+        h1 { color: #1e88e5; font-size: 22px; border-bottom: 2px solid #1e88e5; margin-bottom: 8px; }
+        h2 { color: #43a047; font-size: 18px; margin-top: 24px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+        h3 { color: #555; font-size: 15px; margin-top: 16px; }
+        ul, ol { padding-left: 20px; }
+        li { margin-bottom: 6px; }
+        a { color: #1e88e5; text-decoration: none; font-weight: bold; }
+        .indice { background: #f5f5f5; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
+        .formula { background: #fff3e0; padding: 10px; border-left: 4px solid #ff9800; font-family: monospace; font-size: 13px; margin: 10px 0; overflow-x: auto; }
+        .nota { background: #e8f5e9; padding: 10px; border-left: 4px solid #4caf50; font-size: 13px; border-radius: 4px; margin-top: 16px; }
+        .aviso { background: #fff8e1; padding: 10px; border-left: 4px solid #ffc107; font-size: 13px; border-radius: 4px; margin-top: 12px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+        th { background: #1e88e5; color: white; padding: 6px 8px; text-align: left; }
+        td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        .color-hist { background: #F0F4F8; }
+        .color-ahora-verde { background: #2E7D32; color: white; }
+        .color-ahora-rojo { background: #C62828; color: white; }
+        .color-prev { background: #E2F0D9; }
+    </style>
+</head>
+<body>
+
+    <h1>PintoMeteo — Manual de Usuario</h1>
+
+    <div class="indice">
+        <strong>Índice de contenidos</strong>
+        <ol>
+            <li><a href="#pantalla">Descripción de la Pantalla</a></li>
+            <li><a href="#colores">Interpretación de Colores en la Tabla</a></li>
+            <li><a href="#coordenadas">Coordenadas y Rango de Fechas</a></li>
+            <li><a href="#ajustes">Ajuste Manual con Termómetro e Higrómetro</a></li>
+            <li><a href="#csv">Exportar Datos en CSV</a></li>
+            <li><a href="#menu">Menú de Opciones</a></li>
+            <li><a href="#criterios">Criterios para Trabajos de Pintura</a></li>
+            <li><a href="#fuentes">Fuentes de Datos y Nodo "Ahora"</a></li>
+            <li><a href="#matematicas">Cálculos Internos y Fórmulas</a></li>
+        </ol>
+    </div>
+
+
+    <h2 id="pantalla">1. Descripción de la Pantalla</h2>
+    <p>La aplicación adapta su disposición según la orientación del dispositivo.</p>
+
+    <h3>Modo vertical (Portrait)</h3>
+    <p>Los controles se apilan en la parte superior y la tabla ocupa el resto de la pantalla:</p>
+    <ul>
+        <li><strong>Fila 1 — Coordenadas:</strong> dos campos de texto para introducir <em>Latitud</em> y <em>Longitud</em> en grados decimales.</li>
+        <li><strong>Fila 2 — Rango y consulta:</strong> botón <em>Inic</em> (fecha de inicio), botón <em>Fin</em> (fecha de fin) y botón <em>Ir</em> para lanzar la consulta.</li>
+        <li><strong>Fila 3 — Ajuste local:</strong> campo <em>Temp. Termómetro (ºC)</em> y campo <em>Hum. Aparato (%)</em>.</li>
+        <li><strong>Tabla meteorológica:</strong> lista desplazable con los datos por horas.</li>
+        <li><strong>Botón inferior — Compartir en CSV:</strong> exporta los datos visibles.</li>
+    </ul>
+
+    <h3>Modo horizontal (Landscape)</h3>
+    <p>La pantalla se divide en dos paneles:</p>
+    <ul>
+        <li><strong>Panel izquierdo (38%):</strong> campos <em>Latitud</em> y <em>Longitud</em>, botones <em>Desde</em> y <em>Hasta</em> para las fechas, campos de ajuste manual <em>Temp.</em> y <em>Hum.</em>, botón <em>Consultar</em> y botón <em>Compartir CSV</em>. Si los controles no caben en pantalla, el panel es desplazable verticalmente.</li>
+        <li><strong>Panel derecho (62%):</strong> tabla meteorológica.</li>
+    </ul>
+
+    <h3>Barra superior</h3>
+    <p>Muestra el título <strong>PintoMeteo</strong> y, en la esquina derecha, el icono de menú (tres puntos verticales) que da acceso a <em>Ayuda</em> e <em>Información</em>.</p>
+
+    <h3>Indicador de carga</h3>
+    <p>Mientras la aplicación consulta Open-Meteo, la tabla se sustituye por un círculo giratorio con el texto <em>"Actualizando datos de Open-Meteo…"</em>. Durante ese tiempo el botón <em>Compartir CSV</em> queda desactivado.</p>
+
+    <h3>Columnas de la tabla</h3>
+    <table>
+        <tr><th>Columna</th><th>Unidad</th><th>Descripción</th></tr>
+        <tr><td><strong>Hora</strong></td><td>dd/MM HH:mm</td><td>Fecha y hora del registro. El nodo actual incluye la etiqueta <em>(Ahora)</em>.</td></tr>
+        <tr><td><strong>Temp.</strong></td><td>ºC</td><td>Temperatura del aire a 2 metros de altura.</td></tr>
+        <tr><td><strong>Vto.</strong></td><td>km/h</td><td>Velocidad del viento a 10 metros de altura.</td></tr>
+        <tr><td><strong>Hum.</strong></td><td>%</td><td>Humedad relativa del aire.</td></tr>
+        <tr><td><strong>Precip.</strong></td><td>mm</td><td>Precipitación acumulada en la hora.</td></tr>
+        <tr><td><strong>Rocío</strong></td><td>ºC</td><td>Punto de rocío calculado dinámicamente.</td></tr>
+    </table>
+
+
+    <h2 id="colores">2. Interpretación de Colores en la Tabla</h2>
+    <p>Cada fila se colorea según el tipo de dato que representa y, en el caso del momento presente, según si las condiciones son aptas para pintar:</p>
+
+    <table>
+        <tr><th>Color</th><th>Significado</th></tr>
+        <tr><td class="color-hist">Blanco / Gris azulado alterno</td><td>Datos históricos reales medidos y validados por estaciones meteorológicas.</td></tr>
+        <tr><td class="color-ahora-verde">Verde oscuro — texto blanco en negrita</td><td>Momento presente (<em>Ahora</em>): las condiciones son <strong>favorables</strong> para trabajos de pintura.</td></tr>
+        <tr><td class="color-ahora-rojo">Rojo oscuro — texto blanco en negrita</td><td>Momento presente (<em>Ahora</em>): las condiciones <strong>no son aptas</strong> para pintar.</td></tr>
+        <tr><td class="color-prev">Verde claro alterno</td><td>Predicciones futuras estimadas por el modelo meteorológico.</td></tr>
+    </table>
+
+    <p>La tabla se muestra en orden descendente: el registro más reciente aparece en la parte superior.</p>
+
+
+    <h2 id="coordenadas">3. Coordenadas y Rango de Fechas</h2>
+
+    <h3>Coordenadas geográficas</h3>
+    <p>Los campos <em>Latitud</em> y <em>Longitud</em> aceptan valores en grados decimales (por ejemplo, <code>36.9061</code> y <code>-4.7631</code>). Al arrancar la aplicación se usan las coordenadas por defecto; si se concede permiso de ubicación, se actualizan automáticamente con la posición real del dispositivo y se lanza una nueva consulta.</p>
+
+    <h3>Selección del rango de fechas</h3>
+    <p>Al pulsar los botones <em>Inic</em> / <em>Desde</em> o <em>Fin</em> / <em>Hasta</em> se abre un selector de calendario. La fecha seleccionada se muestra en el propio botón en formato <em>dd-MM-yyyy</em>. Al arrancar, el rango por defecto es <strong>ayer – hoy</strong>.</p>
+
+    <h3>Botón Ir / Consultar</h3>
+    <p>Una vez fijadas las coordenadas y las fechas, pulse <em>Ir</em> (modo vertical) o <em>Consultar</em> (modo horizontal) para lanzar la consulta a Open-Meteo. La tabla se actualiza con los datos del nuevo rango. Las correcciones manuales se borran con cada nueva consulta.</p>
+
+    <div class="aviso">
+        <strong>Límite del histórico:</strong> Open-Meteo Archive solo dispone de datos hasta aproximadamente 5 días antes de la fecha actual. Para periodos más recientes la aplicación usa el Forecast con días pasados. Consulte la sección <a href="#fuentes">Fuentes de Datos</a> para más detalle.
+    </div>
+
+
+    <h2 id="ajustes">4. Ajuste Manual con Termómetro e Higrómetro</h2>
+    <p>Si dispone de un termómetro o higrómetro local, puede introducir sus lecturas para corregir los datos de Open-Meteo y adaptarlos a su entorno inmediato.</p>
+
+    <h3>Cómo funciona</h3>
+    <ol>
+        <li>Introduzca la temperatura medida en <em>Temp. Termómetro</em> y/o la humedad en <em>Hum. Aparato</em>. La tabla se recalcula en tiempo real en cuanto el valor introducido es un número válido.</li>
+        <li>La aplicación calcula el error entre su medición y el valor que Open-Meteo asigna al nodo <em>Ahora</em>.</li>
+        <li>Ese error se propaga al resto de registros de forma lineal dentro de una ventana de ±12 horas: a mayor distancia temporal del presente, menor corrección aplicada. Más allá de 12 horas no se aplica ninguna corrección.</li>
+    </ol>
+
+    <h3>Regla de propagación</h3>
+    <div class="formula">corrección(t) = error_max × (12 − |t − t_ahora|) / 12 &nbsp;&nbsp;&nbsp; si |t − t_ahora| ≤ 12 h</div>
+    <p>En el nodo <em>Ahora</em> la distancia es 0, por lo que recibe el 100% del error. La corrección es simétrica: afecta tanto a horas pasadas como futuras dentro del intervalo.</p>
+
+    <h3>Corrección de humedad</h3>
+    <p>La humedad no se corrige sumando porcentajes directamente. El sistema trabaja con presión de vapor absoluta para respetar la termodinámica del aire húmedo. Consulte la sección <a href="#matematicas">Cálculos Internos</a> para la descripción completa.</p>
+
+    <div class="nota">
+        <strong>Para deshacer las correcciones:</strong> borre el contenido de los campos del termómetro y el higrómetro. La tabla volverá a mostrar los datos puros de Open-Meteo.
+    </div>
+
+
+    <h2 id="csv">5. Exportar Datos en CSV</h2>
+    <p>El botón <em>Compartir en CSV</em> (o <em>Compartir CSV</em> en landscape) genera un archivo con todos los registros visibles en la tabla, incluyendo las correcciones manuales si las hay, y abre el selector de aplicaciones del sistema para compartirlo o guardarlo.</p>
+    <p>El botón está desactivado mientras se realiza una consulta o si la tabla está vacía.</p>
+
+
+    <h2 id="menu">6. Menú de Opciones</h2>
+    <p>El icono de tres puntos verticales en la barra superior despliega dos opciones:</p>
+    <ul>
+        <li><strong>Ayuda:</strong> abre este manual.</li>
+        <li><strong>Información:</strong> muestra los datos de contacto y la información sobre la aplicación.</li>
+    </ul>
+
+
+    <h2 id="criterios">7. Criterios para Trabajos de Pintura</h2>
+    <p>El color del nodo <em>Ahora</em> (verde o rojo) indica si las condiciones son aptas para pintar. El criterio se basa en el margen de seguridad respecto al punto de rocío, aplicando un factor de estrés conservador:</p>
+    <ol>
+        <li>Se calcula un escenario estresado: temperatura reducida en 1,5 ºC y humedad relativa aumentada en 6 puntos porcentuales.</li>
+        <li>Con ese escenario se obtiene el punto de rocío crítico.</li>
+        <li>Las condiciones son favorables si la temperatura real supera en al menos 3 ºC dicho punto de rocío crítico, <strong>y</strong> la precipitación es estrictamente 0,0 mm.</li>
+    </ol>
+    <div class="formula">
+        T_estresada &nbsp;&nbsp;&nbsp;= T − 1,5 ºC<br>
+        RH_estresada &nbsp;&nbsp;= min(RH + 6 %, 100 %)<br>
+        T_rocío_crítico = punto_rocío(T_estresada, RH_estresada)<br><br>
+        Apto &nbsp;⟺&nbsp; T ≥ (T_rocío_crítico + 3,0 ºC) &nbsp;Y&nbsp; precipitación = 0,0 mm
+    </div>
+    <p>Este enfoque es más riguroso que simples umbrales fijos: tiene en cuenta la relación real entre temperatura, humedad y condensación sobre superficies.</p>
+
+
+    <h2 id="fuentes">8. Fuentes de Datos y Nodo "Ahora"</h2>
+
+    <h3>Dos fuentes complementarias</h3>
+    <p>La aplicación combina dos endpoints de Open-Meteo para construir una línea temporal continua:</p>
+    <ul>
+        <li><strong>Archive API:</strong> datos históricos medidos y validados. Solo están disponibles hasta aproximadamente 5 días antes de hoy, ya que su proceso de validación lleva varios días.</li>
+        <li><strong>Forecast API:</strong> cubre desde varios días atrás (según el rango pedido) hasta varios días en el futuro. Permite obtener los datos recientes que el Archive aún no tiene disponibles.</li>
+    </ul>
+    <p>Cuando ambas fuentes disponen de datos para la misma hora, <strong>prevalece siempre el dato del Archive</strong>, por ser una medición real frente a una estimación del modelo.</p>
+
+    <h3>Nodo "Ahora"</h3>
+    <p>En la posición cronológica exacta del momento actual se inserta una fila calculada por interpolación lineal entre las dos horas en punto del Forecast que rodean el instante presente. El peso de cada hora depende de los minutos transcurridos desde la hora anterior:</p>
+    <div class="formula">valor_ahora = valor_T1 + (minutos / 60) × (valor_T2 − valor_T1)</div>
+    <p>Esta fila es la referencia de los ajustes manuales y la que determina el indicador de pintura.</p>
+
+
+    <h2 id="matematicas">9. Cálculos Internos y Fórmulas</h2>
+
+    <h3>Presión de Saturación de Vapor (Tetens)</h3>
+    <p>Para cada temperatura <em>t</em> se calcula la presión de saturación de vapor e<sub>sat</sub> en milibares:</p>
+    <div class="formula">e<sub>sat</sub>(t) = 6,112 × exp((17,625 × t) / (243,04 + t))</div>
+
+    <h3>Corrección de Humedad Relativa por Presión de Vapor</h3>
+    <p>El proceso completo para corregir la humedad de cada fila es:</p>
+    <ol>
+        <li>Con los valores del usuario se calcula la presión de vapor real en el presente:<br>
+            <code>e_usuario = e_sat(T_usuario) × (RH_usuario / 100)</code></li>
+        <li>Con los valores de la API en el nodo <em>Ahora</em> se obtiene la presión de vapor del modelo:<br>
+            <code>e_api = e_sat(T_api) × (RH_api / 100)</code></li>
+        <li>El error en presión de vapor absoluta es:<br>
+            <code>Δe = e_usuario − e_api</code></li>
+        <li>Para cada fila dentro de la ventana de ±12 h, se atenúa Δe con el factor lineal, se suma a la presión de vapor original de esa fila y se reconvierte a humedad relativa con la temperatura corregida de la misma fila.</li>
+    </ol>
+
+    <h3>Punto de Rocío</h3>
+    <p>Se calcula invirtiendo la fórmula de Tetens. Dado un par (temperatura, humedad relativa), el punto de rocío es la temperatura a la que el aire alcanzaría la saturación con la misma cantidad de vapor de agua:</p>
+    <div class="formula">
+        α = ln(RH / 100) + (17,625 × T) / (243,04 + T)<br>
+        T_rocío = (243,04 × α) / (17,625 − α)
+    </div>
+
+</body>
+</html>
