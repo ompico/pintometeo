@@ -6,6 +6,25 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+/**
+ * Acceso a la red: obtiene y combina datos meteorológicos de Open-Meteo.
+ *
+ * Fuentes utilizadas:
+ *  - Archive API  (archive-api.open-meteo.com): datos históricos medidos y validados
+ *    mediante reanálisis ERA5. Solo disponibles hasta ~5 días antes de hoy.
+ *  - Forecast API (api.open-meteo.com): salidas continuas del modelo de predicción.
+ *    Cubre el pasado reciente (que el Archive aún no tiene) y el futuro.
+ *
+ * Cuando ambas fuentes tienen datos para la misma hora, prevalece siempre el histórico
+ * del Archive, por ser una medición real frente a una estimación del modelo.
+ *
+ * IMPORTANTE: esta función NO genera el nodo "Ahora". La interpolación del momento
+ * presente es responsabilidad exclusiva de ControladorMeteorologico, que lo mantiene
+ * como estado observable separado para mostrarlo como fila fija en la UI.
+ *
+ * La lista resultante contiene únicamente registros horarios en punto (HISTORICO o
+ * PREVISION), ordenados de más reciente a más antiguo (descendente).
+ */
 object NetworkRepository {
 
     suspend fun obtenerDatosCompletos(
@@ -18,42 +37,31 @@ object NetworkRepository {
         val sdfFecha = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val ahora    = Calendar.getInstance()
 
-        val horaActualIsoStr  = SimpleDateFormat("yyyy-MM-dd'T'HH:00", Locale.getDefault()).format(ahora.time)
-        val horaExactaStr     = SimpleDateFormat("HH:mm",              Locale.getDefault()).format(ahora.time)
-        val diaMesActualStr   = SimpleDateFormat("dd/MM",              Locale.getDefault()).format(ahora.time)
-        val claveAhoraIso     = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault()).format(ahora.time)
-
-        // ── 1. CONSULTA HISTÓRICA (Archive) ───────────────────────────────────────
-        // El Archive de Open-Meteo solo tiene datos hasta ~5 días antes de hoy.
-        // Limitamos end_date para no provocar un error de la API cuando el usuario
-        // pide un rango que incluye días muy recientes.
-        val calArchivoMax = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -5) }
-        val fechaArchivoMaxStr = sdfFecha.format(calArchivoMax.time)
-
-        // Usamos el mínimo entre la fecha fin pedida y el tope del Archive.
+        // ── 1. CONSULTA HISTÓRICA (Archive API) ───────────────────────────────────
+        // El Archive devuelve error si end_date supera su última fecha disponible
+        // (~hoy − 5 días). Recortamos el límite superior para evitar ese error.
+        // Si tras el recorte el rango queda invertido, omitimos la llamada al Archive.
+        val calArchivoMax   = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -5) }
+        val fechaArchivoMax = sdfFecha.format(calArchivoMax.time)
         val archivoFechaFinEfectiva =
-            if (fechaFinHistorial > fechaArchivoMaxStr) fechaArchivoMaxStr
-            else fechaFinHistorial
+            if (fechaFinHistorial > fechaArchivoMax) fechaArchivoMax else fechaFinHistorial
 
         val listaHistorico = mutableListOf<RegistroMeteorologico>()
 
-        // Solo llamamos al Archive si el rango resultante sigue siendo válido.
         if (archivoFechaFinEfectiva >= fechaInicioHistorial) {
             try {
-                val responseArchive = NetworkClient.archiveService.getArchive(
+                val resp = NetworkClient.archiveService.getArchive(
                     lat, lon, fechaInicioHistorial, archivoFechaFinEfectiva
                 )
-                val hourlyH = responseArchive.hourly
-                for (i in hourlyH.time.indices) {
-                    val horaIso = hourlyH.time[i]
+                for (i in resp.hourly.time.indices) {
                     listaHistorico.add(
                         RegistroMeteorologico(
-                            fechaCronologica = horaIso,
-                            hora             = formatearHoraIso(horaIso),
-                            temperatura      = hourlyH.temperature_2m[i],
-                            velocidadViento  = hourlyH.wind_speed_10m[i],
-                            humedad          = hourlyH.relative_humidity_2m[i],
-                            precipitacion    = hourlyH.precipitation[i],
+                            fechaCronologica = resp.hourly.time[i],
+                            hora             = formatearHoraIso(resp.hourly.time[i]),
+                            temperatura      = resp.hourly.temperature_2m[i],
+                            velocidadViento  = resp.hourly.wind_speed_10m[i],
+                            humedad          = resp.hourly.relative_humidity_2m[i].toDouble(),
+                            precipitacion    = resp.hourly.precipitation[i],
                             tipo             = TipoRegistro.HISTORICO
                         )
                     )
@@ -63,113 +71,65 @@ object NetworkRepository {
             }
         }
 
-        // ── 2. CONSULTA DE PREDICCIONES (Forecast) ────────────────────────────────
-        // Calculamos cuántos días hacia atrás cubre el rango del usuario para pedirlos
-        // todos al Forecast. Esto garantiza que ayer y anteayer aparezcan aunque el
-        // Archive no los tenga todavía.
+        // ── 2. CONSULTA DE PREDICCIONES (Forecast API) ────────────────────────────
+        // Calculamos cuántos días hacia atrás abarca el rango pedido para solicitarlos
+        // todos como past_days. Esto cubre el hueco reciente que el Archive no tiene.
+        // Máximo aceptado por Open-Meteo: 92 días.
         val fechaInicioDate = try { sdfFecha.parse(fechaInicioHistorial) } catch (_: Exception) { null }
-        val diffMs   = ahora.timeInMillis - (fechaInicioDate?.time ?: ahora.timeInMillis)
-        val diffDias = (diffMs / (1000L * 60 * 60 * 24)).toInt()
-        // +1 de margen; máximo que acepta Open-Meteo: 92
+        val diffDias = if (fechaInicioDate != null)
+            ((ahora.timeInMillis - fechaInicioDate.time) / (1000L * 60 * 60 * 24)).toInt()
+        else 0
         val pastDays = (diffDias + 1).coerceIn(1, 92)
 
+        // Límite superior con sufijo horario para incluir todas las horas del último día.
+        // La comparación de strings ISO funciona porque el límite inferior sin sufijo
+        // es seguro gracias a la asimetría del operador >= con el carácter 'T'.
+        val limiteFinForecast = fechaFinHistorial + "T23:59"
+
         val listaPredicciones = mutableListOf<RegistroMeteorologico>()
-        var nodoT1: RegistroMeteorologico? = null
-        var nodoT2: RegistroMeteorologico? = null
 
         try {
-            val responseForecast = NetworkClient.forecastService.getForecast(lat, lon, pastDays)
-            val hourlyF = responseForecast.hourly
-
-            for (i in hourlyF.time.indices) {
-                val horaIso          = hourlyF.time[i]
-                val esHoraEnteraActual = horaIso.startsWith(horaActualIsoStr)
-
-                val registroBase = RegistroMeteorologico(
-                    fechaCronologica = horaIso,
-                    hora             = formatearHoraIso(horaIso),
-                    temperatura      = hourlyF.temperature_2m[i],
-                    velocidadViento  = hourlyF.wind_speed_10m[i],
-                    humedad          = hourlyF.relative_humidity_2m[i],
-                    precipitacion    = hourlyF.precipitation[i],
-                    tipo             = TipoRegistro.PREVISION
-                )
-
-                if (esHoraEnteraActual) {
-                    nodoT1 = registroBase
-                } else if (nodoT1 != null && nodoT2 == null) {
-                    nodoT2 = registroBase
-                }
-
-                // Solo incluimos en el Forecast registros dentro del rango pedido por el usuario
-                // o a partir de hoy (para las predicciones futuras).
-                val limiteFinForecast = fechaFinHistorial + "T23:59"
+            val resp = NetworkClient.forecastService.getForecast(lat, lon, pastDays)
+            for (i in resp.hourly.time.indices) {
+                val horaIso = resp.hourly.time[i]
+                // Solo añadimos registros dentro del rango pedido por el usuario
                 if (horaIso in fechaInicioHistorial..limiteFinForecast) {
-                    listaPredicciones.add(registroBase)
+                    listaPredicciones.add(
+                        RegistroMeteorologico(
+                            fechaCronologica = horaIso,
+                            hora             = formatearHoraIso(horaIso),
+                            temperatura      = resp.hourly.temperature_2m[i],
+                            velocidadViento  = resp.hourly.wind_speed_10m[i],
+                            humedad          = resp.hourly.relative_humidity_2m[i].toDouble(),
+                            precipitacion    = resp.hourly.precipitation[i],
+                            tipo             = TipoRegistro.PREVISION
+                        )
+                    )
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
-        // ── 3. COMBINACIÓN: prevalece el dato histórico cuando existe ──────────────
-        val todosLosRegistros = mutableListOf<RegistroMeteorologico>()
-        todosLosRegistros.addAll(listaHistorico)
-        todosLosRegistros.addAll(listaPredicciones)
+        // ── 3. COMBINACIÓN: prevalece el histórico cuando existe ──────────────────
+        // Agrupamos por hora. Si para una misma hora existen ambos tipos de registro,
+        // nos quedamos con el del Archive (HISTORICO); si no, con el del Forecast.
+        val combinada = (listaHistorico + listaPredicciones)
+            .groupBy { it.fechaCronologica }
+            .map { (_, registros) ->
+                registros.find { it.tipo == TipoRegistro.HISTORICO } ?: registros.first()
+            }
 
-        val gruposPorHora = todosLosRegistros.groupBy { it.fechaCronologica }
-        val listaNuevaCombinada = mutableListOf<RegistroMeteorologico>()
-
-        for ((_, registros) in gruposPorHora) {
-            val historico = registros.find { it.tipo == TipoRegistro.HISTORICO }
-            listaNuevaCombinada.add(historico ?: registros.first())
-        }
-
-        // ── 4. INTERPOLACIÓN DEL NODO "AHORA" ─────────────────────────────────────
-        // Eliminamos la entrada de la hora en punto actual si ya existe en la lista
-        // combinada: el nodo interpolado es más preciso y debe reemplazarla.
-        listaNuevaCombinada.removeAll { it.fechaCronologica == horaActualIsoStr }
-
-        if (nodoT1 != null && nodoT2 != null) {
-            val minutosActuales  = ahora.get(Calendar.MINUTE)
-            val factor           = minutosActuales / 60.0
-
-            listaNuevaCombinada.add(
-                RegistroMeteorologico(
-                    fechaCronologica = claveAhoraIso,
-                    hora             = "$diaMesActualStr $horaExactaStr (Ahora)",
-                    temperatura      = nodoT1.temperatura  + factor * (nodoT2.temperatura  - nodoT1.temperatura),
-                    velocidadViento  = nodoT1.velocidadViento + factor * (nodoT2.velocidadViento - nodoT1.velocidadViento),
-                    humedad          = nodoT1.humedad      + factor * (nodoT2.humedad      - nodoT1.humedad),
-                    precipitacion    = nodoT1.precipitacion + factor * (nodoT2.precipitacion - nodoT1.precipitacion),
-                    tipo             = TipoRegistro.ACTUAL
-                )
-            )
-        } else if (nodoT1 != null) {
-            listaNuevaCombinada.add(
-                RegistroMeteorologico(
-                    fechaCronologica = claveAhoraIso,
-                    hora             = "$diaMesActualStr $horaExactaStr (Ahora)",
-                    temperatura      = nodoT1.temperatura,
-                    velocidadViento  = nodoT1.velocidadViento,
-                    humedad          = nodoT1.humedad,
-                    precipitacion    = nodoT1.precipitacion,
-                    tipo             = TipoRegistro.ACTUAL
-                )
-            )
-        }
-
-        // Orden descendente: lo más reciente arriba
-        return listaNuevaCombinada.sortedByDescending { it.fechaCronologica }
+        // Orden descendente: el registro más reciente aparece primero en la lista
+        return combinada.sortedByDescending { it.fechaCronologica }
     }
 
+    // Convierte "2026-05-25T14:00" en "25/05 14:00" para mostrar en la tabla
     private fun formatearHoraIso(fechaIso: String): String {
         return try {
             val parser    = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
             val formatter = SimpleDateFormat("dd/MM HH:mm",        Locale.getDefault())
             parser.parse(fechaIso)?.let { formatter.format(it) } ?: fechaIso
-        } catch (e: Exception) {
-            fechaIso
-        }
+        } catch (_: Exception) { fechaIso }
     }
 }
