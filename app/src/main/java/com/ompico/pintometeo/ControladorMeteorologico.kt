@@ -112,28 +112,6 @@ object ControladorMeteorologico {
     // CONSULTA EXPLÍCITA DE RANGO (botón Ir / Consultar)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Reemplaza completamente los datos con el rango seleccionado por el usuario.
-     * Si el rango no cubre el momento presente, [registroAhora] pasa a null
-     * y la fila fija desaparece de la cabecera.
-     */
-    suspend fun ejecutarConsulta(lat: Double, lon: Double, fechaInicio: String, fechaFin: String) {
-        cargando  = true
-        latActual = lat
-        lonActual = lon
-        fechaMinCargada = fechaInicio
-        fechaMaxCargada = fechaFin
-
-        try {
-            val datos = NetworkRepository.obtenerDatosCompletos(lat, lon, fechaInicio, fechaFin)
-            aplicarNuevosBaseLimpios(datos)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            cargando = false
-        }
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // AMPLIACIONES DE SCROLL (carga incremental bidireccional)
     // ─────────────────────────────────────────────────────────────────────────

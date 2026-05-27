@@ -66,12 +66,6 @@ class MainActivity : ComponentActivity() {
                         datos                        = ControladorMeteorologico.datosMeteorologicos,
                         latitudInicial               = latitudDispositivo.value,
                         longitudInicial              = longitudDispositivo.value,
-                        onConsultar                  = { lat, lon, fInicio, fFin ->
-                            // El botón Ir/Consultar lanza una consulta de rango explícita
-                            coroutineScope.launch {
-                                ControladorMeteorologico.ejecutarConsulta(lat, lon, fInicio, fFin)
-                            }
-                        },
                         onCambioTemperaturaTermometro = { nuevaTempManual ->
                             ControladorMeteorologico.aplicarCambioTemperatura(nuevaTempManual)
                         },

@@ -33,7 +33,8 @@
         <ol>
             <li><a href="#pantalla">Descripción de la Pantalla</a></li>
             <li><a href="#colores">Interpretación de Colores en la Tabla</a></li>
-            <li><a href="#coordenadas">Coordenadas y Rango de Fechas</a></li>
+            <li><a href="#detalle">Detalle de una Fila</a></li>
+            <li><a href="#coordenadas">Coordenadas y Carga de Datos</a></li>
             <li><a href="#ajustes">Ajuste Manual con Termómetro e Higrómetro</a></li>
             <li><a href="#csv">Exportar Datos en CSV</a></li>
             <li><a href="#menu">Menú de Opciones</a></li>
@@ -51,16 +52,15 @@
     <p>Los controles se apilan en la parte superior y la tabla ocupa el resto de la pantalla:</p>
     <ul>
         <li><strong>Fila 1 — Coordenadas:</strong> dos campos de texto para introducir <em>Latitud</em> y <em>Longitud</em> en grados decimales.</li>
-        <li><strong>Fila 2 — Rango y consulta:</strong> botón <em>Inic</em> (fecha de inicio), botón <em>Fin</em> (fecha de fin) y botón <em>Ir</em> para lanzar la consulta.</li>
-        <li><strong>Fila 3 — Ajuste local:</strong> campo <em>Temp. Termómetro (ºC)</em> y campo <em>Hum. Aparato (%)</em>.</li>
-        <li><strong>Tabla meteorológica:</strong> lista desplazable con los datos por horas.</li>
-        <li><strong>Botón inferior — Compartir en CSV:</strong> exporta los datos visibles.</li>
+        <li><strong>Fila 2 — Ajuste local:</strong> campo <em>Temp. Termómetro (ºC)</em> y campo <em>Hum. Aparato (%)</em>.</li>
+        <li><strong>Tabla meteorológica:</strong> lista desplazable con los datos por horas. Siempre visible bajo la cabecera, la fila <em>Ahora</em> permanece fija independientemente del scroll.</li>
+        <li><strong>Botón inferior — Compartir en CSV:</strong> exporta todos los datos cargados en memoria.</li>
     </ul>
 
     <h3>Modo horizontal (Landscape)</h3>
     <p>La pantalla se divide en dos paneles:</p>
     <ul>
-        <li><strong>Panel izquierdo (38%):</strong> campos <em>Latitud</em> y <em>Longitud</em>, botones <em>Desde</em> y <em>Hasta</em> para las fechas, campos de ajuste manual <em>Temp.</em> y <em>Hum.</em>, botón <em>Consultar</em> y botón <em>Compartir CSV</em>. Si los controles no caben en pantalla, el panel es desplazable verticalmente.</li>
+        <li><strong>Panel izquierdo (38%):</strong> campos <em>Latitud</em> y <em>Longitud</em>, campos de ajuste manual <em>Temp.</em> y <em>Hum.</em>, y botón <em>Compartir CSV</em>. Si los controles no caben en pantalla, el panel es desplazable verticalmente.</li>
         <li><strong>Panel derecho (62%):</strong> tabla meteorológica.</li>
     </ul>
 
@@ -68,12 +68,15 @@
     <p>Muestra el título <strong>PintoMeteo</strong> y, en la esquina derecha, el icono de menú (tres puntos verticales) que da acceso a <em>Ayuda</em> e <em>Información</em>.</p>
 
     <h3>Indicador de carga</h3>
-    <p>Mientras la aplicación consulta Open-Meteo, la tabla se sustituye por un círculo giratorio con el texto <em>"Actualizando datos de Open-Meteo…"</em>. Durante ese tiempo el botón <em>Compartir CSV</em> queda desactivado.</p>
+    <p>Mientras la aplicación consulta Open-Meteo, la tabla se sustituye por un círculo giratorio con el texto <em>"Actualizando datos de Open-Meteo…"</em>. Durante ese tiempo el botón <em>Compartir CSV</em> queda desactivado. Al llegar al extremo superior o inferior de la lista durante el scroll, aparece un pequeño indicador circular en ese extremo mientras se cargan los datos del siguiente bloque.</p>
+
+    <h3>Avisos de límite de datos</h3>
+    <p>Si al desplazarse por la tabla se alcanza el límite de los datos disponibles en Open-Meteo (ya sea por el pasado o por el futuro), la aplicación muestra un aviso en pantalla indicándolo. No es un error: simplemente no hay más datos que la API pueda suministrar en esa dirección.</p>
 
     <h3>Columnas de la tabla</h3>
     <table>
         <tr><th>Columna</th><th>Unidad</th><th>Descripción</th></tr>
-        <tr><td><strong>Hora</strong></td><td>dd/MM HH:mm</td><td>Fecha y hora del registro. El nodo actual incluye la etiqueta <em>(Ahora)</em>.</td></tr>
+        <tr><td><strong>Hora</strong></td><td>dd/MM HH:mm</td><td>Fecha y hora del registro. La fila del momento presente incluye la etiqueta <em>(Ahora)</em>.</td></tr>
         <tr><td><strong>Temp.</strong></td><td>ºC</td><td>Temperatura del aire a 2 metros de altura.</td></tr>
         <tr><td><strong>Vto.</strong></td><td>km/h</td><td>Velocidad del viento a 10 metros de altura.</td></tr>
         <tr><td><strong>Hum.</strong></td><td>%</td><td>Humedad relativa del aire.</td></tr>
@@ -93,26 +96,33 @@
         <tr><td class="color-prev">Verde claro alterno</td><td>Predicciones futuras estimadas por el modelo meteorológico.</td></tr>
     </table>
 
-    <p>La tabla se muestra en orden descendente: el registro más reciente aparece en la parte superior.</p>
+    <p>La tabla se muestra en orden descendente: el registro más reciente aparece en la parte superior, inmediatamente después de la fila fija <em>Ahora</em>.</p>
 
 
-    <h2 id="coordenadas">3. Coordenadas y Rango de Fechas</h2>
+    <h2 id="detalle">3. Detalle de una Fila</h2>
+    <p>Al pulsar sobre cualquier fila de la tabla (incluida la fila <em>Ahora</em>) se abre una ventana emergente con todas las variables meteorológicas de esa hora presentadas en formato ampliado, con fuentes de mayor tamaño para facilitar su lectura.</p>
+    <p>La ventana muestra la fecha y hora como título y, debajo, los cinco valores: temperatura, viento, humedad, precipitación y punto de rocío con sus unidades. Se cierra pulsando el botón <em>Cerrar</em> o tocando fuera del cuadro.</p>
+
+
+    <h2 id="coordenadas">4. Coordenadas y Carga de Datos</h2>
 
     <h3>Coordenadas geográficas</h3>
     <p>Los campos <em>Latitud</em> y <em>Longitud</em> aceptan valores en grados decimales (por ejemplo, <code>36.9061</code> y <code>-4.7631</code>). Al arrancar la aplicación se usan las coordenadas por defecto; si se concede permiso de ubicación, se actualizan automáticamente con la posición real del dispositivo y se lanza una nueva consulta.</p>
 
-    <h3>Selección del rango de fechas</h3>
-    <p>Al pulsar los botones <em>Inic</em> / <em>Desde</em> o <em>Fin</em> / <em>Hasta</em> se abre un selector de calendario. La fecha seleccionada se muestra en el propio botón en formato <em>dd-MM-yyyy</em>. Al arrancar, el rango por defecto es <strong>ayer – hoy</strong>.</p>
+    <h3>Carga inicial y scroll dinámico</h3>
+    <p>Al arrancar, la aplicación carga automáticamente los datos de ayer y mañana, centrados en el momento presente. A partir de ahí, la tabla se alimenta de forma dinámica según el usuario se desplaza:</p>
+    <ul>
+        <li><strong>Scroll hacia abajo</strong> (pasado): se cargan bloques adicionales de datos históricos de semanas anteriores.</li>
+        <li><strong>Scroll hacia arriba</strong> (futuro): se cargan bloques adicionales de predicciones de días posteriores, hasta el límite que ofrece el modelo meteorológico (~16 días desde hoy).</li>
+    </ul>
+    <p>La carga de cada bloque se lanza automáticamente antes de llegar al extremo de la lista, de forma que en condiciones normales el usuario no percibe ninguna interrupción en el scroll.</p>
 
-    <h3>Botón Ir / Consultar</h3>
-    <p>Una vez fijadas las coordenadas y las fechas, pulse <em>Ir</em> (modo vertical) o <em>Consultar</em> (modo horizontal) para lanzar la consulta a Open-Meteo. La tabla se actualiza con los datos del nuevo rango. Las correcciones manuales se borran con cada nueva consulta.</p>
-
-    <div class="aviso">
-        <strong>Límite del histórico:</strong> Open-Meteo Archive solo dispone de datos hasta aproximadamente 5 días antes de la fecha actual. Para periodos más recientes la aplicación usa el Forecast con días pasados. Consulte la sección <a href="#fuentes">Fuentes de Datos</a> para más detalle.
+    <div class="nota">
+        <strong>Cambio de ubicación:</strong> si modifica los campos de latitud y longitud, la aplicación relanza la carga inicial con las nuevas coordenadas en cuanto se detecta el cambio, reiniciando la ventana de datos centrada en el presente.
     </div>
 
 
-    <h2 id="ajustes">4. Ajuste Manual con Termómetro e Higrómetro</h2>
+    <h2 id="ajustes">5. Ajuste Manual con Termómetro e Higrómetro</h2>
     <p>Si dispone de un termómetro o higrómetro local, puede introducir sus lecturas para corregir los datos de Open-Meteo y adaptarlos a su entorno inmediato.</p>
 
     <h3>Cómo funciona</h3>
@@ -134,12 +144,12 @@
     </div>
 
 
-    <h2 id="csv">5. Exportar Datos en CSV</h2>
-    <p>El botón <em>Compartir en CSV</em> (o <em>Compartir CSV</em> en landscape) genera un archivo con todos los registros visibles en la tabla, incluyendo las correcciones manuales si las hay, y abre el selector de aplicaciones del sistema para compartirlo o guardarlo.</p>
-    <p>El botón está desactivado mientras se realiza una consulta o si la tabla está vacía.</p>
+    <h2 id="csv">6. Exportar Datos en CSV</h2>
+    <p>El botón <em>Compartir en CSV</em> (o <em>Compartir CSV</em> en landscape) genera un archivo con todos los registros que hay cargados en memoria en ese momento, incluyendo las correcciones manuales si las hay, y abre el selector de aplicaciones del sistema para compartirlo o guardarlo.</p>
+    <p>Cuanto más haya navegado por la tabla antes de pulsar el botón, más datos contendrá el archivo exportado. El botón está desactivado mientras se realiza una consulta o si la tabla está vacía.</p>
 
 
-    <h2 id="menu">6. Menú de Opciones</h2>
+    <h2 id="menu">7. Menú de Opciones</h2>
     <p>El icono de tres puntos verticales en la barra superior despliega dos opciones:</p>
     <ul>
         <li><strong>Ayuda:</strong> abre este manual.</li>
@@ -147,7 +157,7 @@
     </ul>
 
 
-    <h2 id="criterios">7. Criterios para Trabajos de Pintura</h2>
+    <h2 id="criterios">8. Criterios para Trabajos de Pintura</h2>
     <p>El color del nodo <em>Ahora</em> (verde o rojo) indica si las condiciones son aptas para pintar. El criterio se basa en el margen de seguridad respecto al punto de rocío, aplicando un factor de estrés conservador:</p>
     <ol>
         <li>Se calcula un escenario estresado: temperatura reducida en 1,5 ºC y humedad relativa aumentada en 6 puntos porcentuales.</li>
@@ -163,23 +173,23 @@
     <p>Este enfoque es más riguroso que simples umbrales fijos: tiene en cuenta la relación real entre temperatura, humedad y condensación sobre superficies.</p>
 
 
-    <h2 id="fuentes">8. Fuentes de Datos y Nodo "Ahora"</h2>
+    <h2 id="fuentes">9. Fuentes de Datos y Nodo "Ahora"</h2>
 
     <h3>Dos fuentes complementarias</h3>
     <p>La aplicación combina dos endpoints de Open-Meteo para construir una línea temporal continua:</p>
     <ul>
-        <li><strong>Archive API:</strong> datos históricos medidos y validados. Solo están disponibles hasta aproximadamente 5 días antes de hoy, ya que su proceso de validación lleva varios días.</li>
-        <li><strong>Forecast API:</strong> cubre desde varios días atrás (según el rango pedido) hasta varios días en el futuro. Permite obtener los datos recientes que el Archive aún no tiene disponibles.</li>
+        <li><strong>Archive API:</strong> datos históricos medidos y validados mediante reanálisis ERA5, que incorpora observaciones de estaciones, aeronaves, boyas, radar y satélite. Solo están disponibles hasta aproximadamente 5 días antes de hoy, ya que su proceso de validación lleva varios días.</li>
+        <li><strong>Forecast API:</strong> salidas continuas del modelo de predicción. Cubre desde varios días atrás (para el periodo reciente que el Archive aún no tiene) hasta aproximadamente 16 días en el futuro.</li>
     </ul>
     <p>Cuando ambas fuentes disponen de datos para la misma hora, <strong>prevalece siempre el dato del Archive</strong>, por ser una medición real frente a una estimación del modelo.</p>
 
     <h3>Nodo "Ahora"</h3>
-    <p>En la posición cronológica exacta del momento actual se inserta una fila calculada por interpolación lineal entre las dos horas en punto del Forecast que rodean el instante presente. El peso de cada hora depende de los minutos transcurridos desde la hora anterior:</p>
+    <p>La fila <em>Ahora</em>, fija bajo la cabecera, se calcula por interpolación lineal entre la hora en punto actual (T1) y la hora siguiente (T2), ponderada por los minutos transcurridos desde T1:</p>
     <div class="formula">valor_ahora = valor_T1 + (minutos / 60) × (valor_T2 − valor_T1)</div>
-    <p>Esta fila es la referencia de los ajustes manuales y la que determina el indicador de pintura.</p>
+    <p>Esta fila es la referencia de los ajustes manuales y la que determina el indicador de pintura. Si el rango cargado no cubre el momento presente (por ejemplo, tras una consulta de rango histórico), la fila fija no se muestra.</p>
 
 
-    <h2 id="matematicas">9. Cálculos Internos y Fórmulas</h2>
+    <h2 id="matematicas">10. Cálculos Internos y Fórmulas</h2>
 
     <h3>Presión de Saturación de Vapor (Tetens)</h3>
     <p>Para cada temperatura <em>t</em> se calcula la presión de saturación de vapor e<sub>sat</sub> en milibares:</p>

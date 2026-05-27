@@ -75,7 +75,6 @@ fun PantallaMeteorologica(
     datos: List<RegistroMeteorologico>,
     latitudInicial: String,
     longitudInicial: String,
-    onConsultar: (Double, Double, String, String) -> Unit,
     onCambioTemperaturaTermometro: (Double?) -> Unit,
     onCambioHumedadHigrometro: (Double?) -> Unit
 ) {
@@ -105,20 +104,6 @@ fun PantallaMeteorologica(
 
     var textoTempEditable by remember { mutableStateOf("") }
     var textoHumEditable  by remember { mutableStateOf("") }
-
-    val sdf       = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val sdfVisual = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-
-    // Valores por defecto de los selectores de fecha: ayer y hoy.
-    // Coinciden con la ventana que carga inicializarVentana(), así que los botones
-    // muestran información coherente con lo que hay en la tabla al arrancar.
-    // Estos valores solo importan cuando el usuario pulsa Ir/Consultar.
-    var fechaInicio by remember { mutableStateOf(sdf.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time)) }
-    var fechaFin    by remember { mutableStateOf(sdf.format(Calendar.getInstance().time)) }
-
-    fun formatearAVisual(f: String): String = try {
-        sdf.parse(f)?.let { sdfVisual.format(it) } ?: f
-    } catch (_: Exception) { f }
 
     // Callbacks de carga incremental: los lanza la TablaMeteorologica cuando
     // detecta que el usuario llega al extremo superior o inferior del scroll.
