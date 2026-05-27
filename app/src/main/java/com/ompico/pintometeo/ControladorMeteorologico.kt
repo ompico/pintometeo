@@ -39,6 +39,10 @@ object ControladorMeteorologico {
     // Solo contiene registros HISTORICO y PREVISION, nunca ACTUAL.
     val datosMeteorologicos = mutableStateListOf<RegistroMeteorologico>()
 
+    // Mensaje de aviso cuando la API no devuelve más datos en una dirección.
+    // La UI lo lee para mostrar un Toast y lo resetea a null tras hacerlo.
+    var avisoLimiteApi by mutableStateOf<String?>(null)
+
     // ── Nodo "Ahora" como estado observable separado ──────────────────────────
     // Interpolación lineal entre la hora en punto actual (T1) y la siguiente (T2).
     // Se muestra como fila fija inamovible bajo la cabecera de la tabla.
@@ -161,6 +165,12 @@ object ControladorMeteorologico {
                 sdf.format(calNuevaInicio.time),
                 sdf.format(calNuevaFin.time)
             )
+
+            if (nuevosDatos.isEmpty()) {
+                avisoLimiteApi = "No hay más datos históricos disponibles"
+                return
+            }
+            
             fechaMinCargada = sdf.format(calNuevaInicio.time)
             // Datos más antiguos → van al FINAL (lista descendente: más reciente primero)
             datosBaseOriginales = datosBaseOriginales + reconstruirLineaTemporal(nuevosDatos)
@@ -200,7 +210,14 @@ object ControladorMeteorologico {
                 sdf.format(calNuevaInicio.time),
                 sdf.format(calNuevaFin.time)
             )
+
+            if (nuevosDatos.isEmpty()) {
+                avisoLimiteApi = "No hay más datos de previsión disponibles"
+                return
+            }
+            
             fechaMaxCargada = sdf.format(calNuevaFin.time)
+            
             // Datos más recientes → van al INICIO (lista descendente: más reciente primero)
             datosBaseOriginales = reconstruirLineaTemporal(nuevosDatos) + datosBaseOriginales
             recalcularYActualizarListaCompleta()
