@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.clickable
 
 import com.ompico.pintometeo.ControladorMeteorologico
 import com.ompico.pintometeo.data.RegistroMeteorologico
@@ -453,6 +454,9 @@ fun TablaMeteorologica(
     onNecesitaMasAntiguo: () -> Unit,
     onNecesitaMasReciente: () -> Unit
 ) {
+
+    var registroSeleccionado by remember { mutableStateOf<RegistroMeteorologico?>(null) }
+    
     // ── Detección de scroll cerca del fondo → cargar más pasado ───────────────
     // snapshotFlow convierte el estado de scroll en un Flow observable.
     // distinctUntilChanged + filter garantizan un único disparo al entrar en
@@ -489,6 +493,16 @@ fun TablaMeteorologica(
             }
     }
 
+    val context = LocalContext.current  // ya existe, no duplicar
+
+    LaunchedEffect(ControladorMeteorologico.avisoLimiteApi) {
+        val mensaje = ControladorMeteorologico.avisoLimiteApi
+        if (mensaje != null) {
+            Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+            ControladorMeteorologico.avisoLimiteApi = null
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
 
         // Cabecera con los nombres de columna: siempre visible
@@ -502,6 +516,7 @@ fun TablaMeteorologica(
                 registro      = ahora,
                 anchoColumna  = anchoColumna,
                 sePuedePintar = ahora.esFavorableParaPintar
+                onClick       = { registroSeleccionado = ahora }
             )
         }
 
@@ -546,6 +561,14 @@ fun TablaMeteorologica(
             }
         }
     }
+
+    registroSeleccionado?.let { reg ->
+        DialogoDetalleRegistro(
+            registro   = reg,
+            onDismiss  = { registroSeleccionado = null }
+        )
+    }
+    
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -611,6 +634,7 @@ fun FilaMeteorologica(
     registro: RegistroMeteorologico,
     anchoColumna: Dp,
     sePuedePintar: Boolean
+    onClick: () -> Unit
 ) {
     // La hora siempre termina en ":00" para HISTORICO y PREVISION.
     // Tomamos el dígito de las decenas de la hora para alternar colores
@@ -630,6 +654,7 @@ fun FilaMeteorologica(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .background(backgroundColor)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -654,3 +679,45 @@ fun FilaMeteorologica(
         }
     }
 }
+
+@Composable
+fun DialogoDetalleRegistro(
+    registro: RegistroMeteorologico,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text       = registro.hora,
+                fontSize   = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                DetalleLinea("Temperatura",   "${registro.formatDouble(registro.temperatura)} ºC")
+                DetalleLinea("Viento",        "${registro.formatDouble(registro.velocidadViento)} km/h")
+                DetalleLinea("Humedad",       "${registro.humedad.toInt()} %")
+                DetalleLinea("Precipitación", "${registro.formatDouble(registro.precipitacion)} mm")
+                DetalleLinea("Punto de Rocío","${registro.formatDouble(registro.puntoRocio)} ºC")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        }
+    )
+}
+
+@Composable
+private fun DetalleLinea(etiqueta: String, valor: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(etiqueta, fontSize = 15.sp, color = Color.Gray)
+        Text(valor,    fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
