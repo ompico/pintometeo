@@ -2,6 +2,7 @@ package com.ompico.pintometeo.ui
 
 import android.app.DatePickerDialog
 import android.content.res.Configuration
+import android.widget.Toast
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
@@ -83,6 +84,31 @@ fun PantallaMeteorologica(
     val scrollControles    = rememberScrollState()
     val focusManager       = LocalFocusManager.current
     val coroutineScope     = rememberCoroutineScope()
+
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val sdfVisual = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
+    var fechaInicio by remember {
+        mutableStateOf(sdf.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time))
+    }
+    var fechaFin by remember {
+        mutableStateOf(sdf.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, +1) }.time))
+    }
+
+    val formatearAVisual: (String) -> String = { fechaStr ->
+        try {
+            val date = sdf.parse(fechaStr)
+            if (date != null) sdfVisual.format(date) else fechaStr
+        } catch (_: Exception) {
+            fechaStr
+        }
+    }
+
+    val onConsultar: (Double, Double, String, String) -> Unit = { lat, lon, inicio, fin ->
+        coroutineScope.launch {
+            ControladorMeteorologico.cargarRango(lat, lon, inicio, fin)
+        }
+    }
 
     // Estado de scroll de la LazyColumn, necesario para la detección de extremos
     val listState = rememberLazyListState()
@@ -500,7 +526,7 @@ fun TablaMeteorologica(
             FilaMeteorologica(
                 registro      = ahora,
                 anchoColumna  = anchoColumna,
-                sePuedePintar = ahora.esFavorableParaPintar
+                sePuedePintar = ahora.esFavorableParaPintar,
                 onClick       = { registroSeleccionado = ahora }
             )
         }
@@ -618,8 +644,8 @@ fun CabeceraTabla(anchoColumna: Dp) {
 fun FilaMeteorologica(
     registro: RegistroMeteorologico,
     anchoColumna: Dp,
-    sePuedePintar: Boolean
-    onClick: () -> Unit
+    sePuedePintar: Boolean,
+    onClick: () -> Unit = {}
 ) {
     // La hora siempre termina en ":00" para HISTORICO y PREVISION.
     // Tomamos el dígito de las decenas de la hora para alternar colores

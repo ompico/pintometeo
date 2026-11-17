@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android") // Asegúrate de que en el archivo build.gradle.kts (Raíz) la versión de este plugin sea 1.9.24
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -38,10 +39,6 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-    composeOptions {
-        // Totalmente compatible con la versión de Kotlin 1.9.24
-        kotlinCompilerExtensionVersion = "1.5.14"
     }
     packaging {
         resources {

@@ -108,6 +108,26 @@ object ControladorMeteorologico {
         }
     }
 
+    /**
+     * Carga un rango de fechas personalizado solicitado por el usuario desde la UI.
+     */
+    suspend fun cargarRango(lat: Double, lon: Double, inicio: String, fin: String) {
+        cargando  = true
+        latActual = lat
+        lonActual = lon
+        fechaMinCargada = inicio
+        fechaMaxCargada = fin
+
+        try {
+            val datos = NetworkRepository.obtenerDatosCompletos(lat, lon, fechaMinCargada, fechaMaxCargada)
+            aplicarNuevosBaseLimpios(datos)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            cargando = false
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // AMPLIACIONES DE SCROLL (carga incremental bidireccional)
     // ─────────────────────────────────────────────────────────────────────────
